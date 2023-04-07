@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"time"
-	
+
 	"github.com/gin-gonic/gin"
 
 	httpsign "github.com/bitmark-inc/httpsign/go"
