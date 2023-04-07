@@ -14,14 +14,14 @@ pacakge main
 import (
 	"github.com/gin-gonic/gin"
 
-    httpsign "github.com/bitmark-inc/httpsign/gin"
+	httpsign "github.com/bitmark-inc/httpsign/go/gin"
 )
 
 func main() {
 	app := gin.Default()
 	app.Use(httpsign.New(secretKey))
 
-    app.Run(":8080")
+	app.Run(":8080")
 }
 
 ```
