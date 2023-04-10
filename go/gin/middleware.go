@@ -42,7 +42,9 @@ func New(secretKey string) gin.HandlerFunc {
 			httpsign.AbortWithError(c, http.StatusForbidden, "invalid signature", fmt.Errorf("invalid signature"))
 			return
 		}
+
 		var timestamp = c.Request.Header.Get("X-Api-Timestamp")
+
 		i, err := strconv.Atoi(timestamp)
 		if err != nil {
 			httpsign.AbortWithError(c, http.StatusForbidden, "error occur when convert timestamp", fmt.Errorf("invalid timestamp"))
