@@ -1,18 +1,14 @@
 package main
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
-	"io"
 	"net/http"
-	"regexp"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 
 	httpsign "github.com/bitmark-inc/httpsign/go"
+	httpsignMiddleware "github.com/bitmark-inc/httpsign/go/gin"
 )
 
 func main() {
@@ -35,51 +31,25 @@ func ServeApplication() error {
 
 // SignMiddleware is a middleware that generate the signature of the request
 func SignMiddleware(ctx *gin.Context) {
-	contentType := ctx.ContentType()
-
-	isFormData, err := regexp.MatchString("multipart/form-data", contentType)
+	signatureString, err := httpsignMiddleware.BuildSignatureString(ctx)
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": "can not read request body content-type",
-			"error":   err,
+			"message": "error occur when build signature string",
+			"error":   err.Error(),
 		})
 		return
 	}
 
-	var body string
-
-	if isFormData || ctx.Request.Method == http.MethodGet {
-		body = ""
-	} else {
-		bodyBuf, err := io.ReadAll(ctx.Request.Body)
-		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"message": "can not read bodyr",
-				"error":   err,
-			})
-			return
-		}
-
-		body = httpsign.EncodeBodyToHex(bodyBuf)
-	}
-
-	var timestamp = ctx.Request.Header.Get("X-Api-Timestamp")
-
-	message := fmt.Sprintf("%s|%s|%s", ctx.Request.URL, body, timestamp)
-
-	signature := Sign([]byte(message), []byte(viper.GetString("server.secret_key")))
+	signature := Sign(signatureString, viper.GetString("server.secret_key"))
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"signature": signature,
-		"message":   message,
+		"message":   signatureString,
 	})
 }
 
-func Sign(msg, key []byte) string {
-	mac := hmac.New(sha256.New, key)
-	mac.Write(msg)
-
-	calculated := mac.Sum(nil)
+func Sign(payload, secretKey string) string {
+	calculated := httpsign.CalculateHMAC(payload, secretKey)
 
 	return hex.EncodeToString(calculated)
 }

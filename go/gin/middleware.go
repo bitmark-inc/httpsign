@@ -12,27 +12,13 @@ import (
 	httpsign "github.com/bitmark-inc/httpsign/go"
 )
 
-func CheckIsFormData(contentType string) bool {
-	return contentType == "multipart/form-data"
-}
-
+// New return a middleware that verify the signature of the request
 func New(secretKey string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		contentType := c.ContentType()
-		isFormData := CheckIsFormData(contentType)
-
-		var encodedBody string
-
-		if isFormData || c.Request.Method == http.MethodGet {
-			encodedBody = ""
-		} else {
-			bodyBuf, err := io.ReadAll(c.Request.Body)
-			if err != nil {
-				httpsign.AbortWithError(c, http.StatusForbidden, "can not read encodedBody", err)
-				return
-			}
-
-			encodedBody = httpsign.EncodeBodyToHex(bodyBuf)
+		signatureString, err := BuildSignatureString(c)
+		if err != nil {
+			httpsign.AbortWithError(c, http.StatusInternalServerError, "error occur when build string to verify signature", err)
+			return
 		}
 
 		var signature = c.Request.Header.Get("X-Api-Signature")
@@ -41,26 +27,50 @@ func New(secretKey string) gin.HandlerFunc {
 			return
 		}
 
-		var timestamp = c.Request.Header.Get("X-Api-Timestamp")
-
-		i, err := strconv.Atoi(timestamp)
-		if err != nil {
-			httpsign.AbortWithError(c, http.StatusForbidden, "error occur when convert timestamp", fmt.Errorf("invalid timestamp"))
-			return
-		}
-
-		if time.Since(time.Unix(int64(i), 0)) > time.Minute {
-			httpsign.AbortWithError(c, http.StatusForbidden, err.Error(), fmt.Errorf("request time too skewed"))
-			return
-		}
-
-		var stringToVerify = fmt.Sprintf("%s|%s|%s", c.Request.URL, encodedBody, timestamp)
-
-		if !httpsign.VerifySignature(stringToVerify, signature, secretKey) {
+		if !httpsign.VerifySignature(signatureString, signature, secretKey) {
 			httpsign.AbortWithError(c, http.StatusForbidden, "signature does not match", fmt.Errorf("invalid signature"))
 			return
 		}
 
 		c.Next()
 	}
+}
+
+// BuildSignatureString is a function that build the string to verify
+func BuildSignatureString(c *gin.Context) (string, error) {
+	contentType := c.ContentType()
+	isFormData := CheckIsFormData(contentType)
+
+	var encodedBody string
+
+	if isFormData || c.Request.Method == http.MethodGet {
+		encodedBody = ""
+	} else {
+		bodyBuf, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			return "", err
+		}
+
+		encodedBody = httpsign.EncodeBodyToHex(bodyBuf)
+	}
+
+	var timestamp = c.Request.Header.Get("X-Api-Timestamp")
+
+	i, err := strconv.Atoi(timestamp)
+	if err != nil {
+		return "", err
+	}
+
+	if time.Since(time.Unix(int64(i), 0)) > time.Minute {
+		return "", fmt.Errorf("request time too skewed")
+	}
+
+	var stringToVerify = fmt.Sprintf("%s|%s|%s", c.Request.URL, encodedBody, timestamp)
+
+	return stringToVerify, nil
+}
+
+// CheckIsFormData is a function that check if the content type is form data
+func CheckIsFormData(contentType string) bool {
+	return contentType == "multipart/form-data"
 }
