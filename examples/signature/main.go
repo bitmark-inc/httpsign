@@ -23,8 +23,7 @@ func main() {
 func ServeApplication() error {
 	router := gin.Default()
 
-	v1 := router.Group("/v1")
-	v1.Any("/*proxyPath", SignMiddleware)
+	router.Any("/*proxyPath", SignMiddleware)
 
 	return router.Run(":8009")
 }

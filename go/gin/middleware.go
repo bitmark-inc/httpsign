@@ -39,11 +39,10 @@ func New(secretKey string) gin.HandlerFunc {
 // BuildSignatureString is a function that build the string to verify
 func BuildSignatureString(c *gin.Context) (string, error) {
 	contentType := c.ContentType()
-	isFormData := CheckIsFormData(contentType)
 
 	var encodedBody string
 
-	if isFormData || c.Request.Method == http.MethodGet {
+	if IsFormData(contentType) || c.Request.Method == http.MethodGet {
 		encodedBody = ""
 	} else {
 		bodyBuf, err := io.ReadAll(c.Request.Body)
@@ -70,7 +69,7 @@ func BuildSignatureString(c *gin.Context) (string, error) {
 	return stringToVerify, nil
 }
 
-// CheckIsFormData is a function that check if the content type is form data
-func CheckIsFormData(contentType string) bool {
+// IsFormData is a function that check if the content type is form data
+func IsFormData(contentType string) bool {
 	return contentType == "multipart/form-data"
 }
