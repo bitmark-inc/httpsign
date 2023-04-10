@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -51,6 +52,8 @@ func BuildSignatureString(c *gin.Context) (string, error) {
 		}
 
 		encodedBody = httpsign.EncodeBodyToHex(bodyBuf)
+
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBuf))
 	}
 
 	var timestamp = c.Request.Header.Get("X-Api-Timestamp")
