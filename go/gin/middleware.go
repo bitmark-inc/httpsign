@@ -25,7 +25,7 @@ func New(secretKey string) gin.HandlerFunc {
 
 		var body string
 
-		if isFormData {
+		if isFormData || c.Request.Method == http.MethodGet {
 			body = ""
 		} else {
 			bodyBuf, err := io.ReadAll(c.Request.Body)

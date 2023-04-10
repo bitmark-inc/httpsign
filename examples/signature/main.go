@@ -52,7 +52,7 @@ func signMiddleware(ctx *gin.Context) {
 
 	var body string
 
-	if isFormData {
+	if isFormData || ctx.Request.Method == http.MethodGet {
 		body = ""
 	} else {
 		bodyBuf, err := io.ReadAll(ctx.Request.Body)
