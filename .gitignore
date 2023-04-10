@@ -1,0 +1,15 @@
+node_modules
+bin
+dist
+config.yaml
+*.json
+*.db
+*.pub
+*.dec
+
+TAGS
+postgres-data
+.idea
+docker-compose*.yml
+data
+vendor/
