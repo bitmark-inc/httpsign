@@ -16,30 +16,26 @@ import (
 )
 
 func main() {
-	err := serveApplication()
+	err := ServeApplication()
 	if err != nil {
 		panic(err)
 	}
 }
 
-// serveApplication is a function that serve the application
+// ServeApplication is a function that serve the application
 // you can sign a message by using postman docs of postcard api. Just replace the host
-func serveApplication() error {
+func ServeApplication() error {
 	router := gin.Default()
 
 	v1 := router.Group("/v1")
-	v1.POST("/postcard/claim", signMiddleware)
-	v1.GET("/postcard/claim/:share_code", signMiddleware)
-	v1.POST("/postcard/:token_id/share", signMiddleware)
-	v1.GET("/postcard/:token_id", signMiddleware)
-	v1.POST("/postcard/:token_id/stamp", signMiddleware)
+	v1.Any("/*proxyPath", SignMiddleware)
 
 	return router.Run(":8009")
 }
 
-// signMiddleware is a middleware that generate the signature of the request
-func signMiddleware(ctx *gin.Context) {
-	contentType := ctx.Request.Header.Get("Content-Type")
+// SignMiddleware is a middleware that generate the signature of the request
+func SignMiddleware(ctx *gin.Context) {
+	contentType := ctx.ContentType()
 
 	isFormData, err := regexp.MatchString("multipart/form-data", contentType)
 	if err != nil {

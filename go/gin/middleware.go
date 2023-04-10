@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 	"strconv"
 	"time"
 
@@ -13,28 +12,27 @@ import (
 	httpsign "github.com/bitmark-inc/httpsign/go"
 )
 
+func CheckIsFormData(contentType string) bool {
+	return contentType == "multipart/form-data"
+}
+
 func New(secretKey string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		contentType := c.Request.Header.Get("Content-Type")
+		contentType := c.ContentType()
+		isFormData := CheckIsFormData(contentType)
 
-		isFormData, err := regexp.MatchString("multipart/form-data", contentType)
-		if err != nil {
-			httpsign.AbortWithError(c, http.StatusInternalServerError, "can not read request body content-type", err)
-			return
-		}
-
-		var body string
+		var encodedBody string
 
 		if isFormData || c.Request.Method == http.MethodGet {
-			body = ""
+			encodedBody = ""
 		} else {
 			bodyBuf, err := io.ReadAll(c.Request.Body)
 			if err != nil {
-				httpsign.AbortWithError(c, http.StatusForbidden, "can not read body", err)
+				httpsign.AbortWithError(c, http.StatusForbidden, "can not read encodedBody", err)
 				return
 			}
 
-			body = httpsign.EncodeBodyToHex(bodyBuf)
+			encodedBody = httpsign.EncodeBodyToHex(bodyBuf)
 		}
 
 		var signature = c.Request.Header.Get("X-Api-Signature")
@@ -56,7 +54,7 @@ func New(secretKey string) gin.HandlerFunc {
 			return
 		}
 
-		var stringToVerify = fmt.Sprintf("%s|%s|%s", c.Request.URL, body, timestamp)
+		var stringToVerify = fmt.Sprintf("%s|%s|%s", c.Request.URL, encodedBody, timestamp)
 
 		if !httpsign.VerifySignature(stringToVerify, signature, secretKey) {
 			httpsign.AbortWithError(c, http.StatusForbidden, "signature does not match", fmt.Errorf("invalid signature"))
