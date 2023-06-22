@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -75,4 +76,31 @@ func BuildSignatureString(c *gin.Context) (string, error) {
 // IsFormData is a function that check if the content type is form data
 func IsFormData(contentType string) bool {
 	return contentType == "multipart/form-data"
+}
+
+func AddSignHeaderToRequest(r *http.Request, secretKey string) *http.Request {
+	var encodedBody string
+
+	contentType := r.Header.Get("Content-Type")
+	if IsFormData(contentType) || r.Method == http.MethodGet {
+		encodedBody = ""
+	} else {
+		bodyBuf, err := io.ReadAll(r.Body)
+		if err != nil {
+			return r
+		}
+
+		encodedBody = httpsign.EncodeBodyToHex(bodyBuf)
+
+		r.Body = io.NopCloser(bytes.NewBuffer(bodyBuf))
+	}
+
+	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+	message := fmt.Sprintf("%s|%s|%s", r.URL, encodedBody, timestamp)
+
+	hmacSignature := httpsign.CalculateHMAC(message, secretKey)
+
+	r.Header.Set("X-Api-Signature", hex.EncodeToString(hmacSignature))
+	r.Header.Set("X-Api-Timestamp", timestamp)
+	return r
 }
