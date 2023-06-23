@@ -68,7 +68,7 @@ func BuildSignatureString(c *gin.Context) (string, error) {
 		return "", fmt.Errorf("request time too skewed")
 	}
 
-	var stringToVerify = fmt.Sprintf("%s|%s|%s", c.Request.URL, encodedBody, timestamp)
+	var stringToVerify = fmt.Sprintf("%s|%s|%s", c.Request.URL.Path, encodedBody, timestamp)
 
 	return stringToVerify, nil
 }
@@ -96,7 +96,7 @@ func AddSignHeaderToRequest(r *http.Request, secretKey string) *http.Request {
 	}
 
 	timestamp := fmt.Sprintf("%d", time.Now().Unix())
-	message := fmt.Sprintf("%s|%s|%s", r.URL, encodedBody, timestamp)
+	message := fmt.Sprintf("%s|%s|%s", r.URL.Path, encodedBody, timestamp)
 
 	hmacSignature := httpsign.CalculateHMAC(message, secretKey)
 
