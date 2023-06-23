@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -75,7 +76,7 @@ func BuildSignatureString(c *gin.Context) (string, error) {
 
 // IsFormData is a function that check if the content type is form data
 func IsFormData(contentType string) bool {
-	return contentType == "multipart/form-data"
+	return strings.HasPrefix(contentType, "multipart/form-data")
 }
 
 func AddSignHeaderToRequest(r *http.Request, secretKey string) *http.Request {
